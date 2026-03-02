@@ -1,5 +1,13 @@
 import * as pako from "pako";
 
+export type NBTValue =
+  | number
+  | bigint
+  | string
+  | NBTValue[]
+  | { [key: string]: NBTValue }
+  | number[];
+
 /**
  * Parser NBT minimalista para ler arquivos binários do Minecraft no navegador.
  */
@@ -58,7 +66,7 @@ class NBTReader {
     return this.decoder.decode(bytes);
   }
 
-  readTag(type: number): any {
+  readTag(type: number): NBTValue {
     switch (type) {
       case 1:
         return this.readByte();
@@ -97,7 +105,7 @@ class NBTReader {
       }
       case 10: {
         // Compound
-        const compound: any = {};
+        const compound: Record<string, NBTValue> = {};
         while (true) {
           const type = this.readByte();
           if (type === 0) break;
@@ -125,7 +133,7 @@ class NBTReader {
     }
   }
 
-  parse(): any {
+  parse(): NBTValue {
     const type = this.readByte();
     if (type !== 10)
       throw new Error("O arquivo NBT deve comecar com um Compound Tag");
@@ -134,7 +142,9 @@ class NBTReader {
   }
 }
 
-export async function parseNbtFile(file: File): Promise<any> {
+export async function parseNbtFile(
+  file: File,
+): Promise<Record<string, NBTValue>> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
 
@@ -167,10 +177,11 @@ export async function parseNbtFile(file: File): Promise<any> {
 
         // Normalização para o Dashboard
         // O level.dat geralmente tem uma tag raiz chamada "Data"
-        if (data.Data) {
-          resolve({ Data: data.Data });
+        const resultData = data as Record<string, NBTValue>;
+        if (resultData.Data) {
+          resolve({ Data: resultData.Data });
         } else {
-          resolve({ Data: data });
+          resolve({ Data: resultData });
         }
       } catch (err) {
         console.error("Erro no Parse NBT:", err);
